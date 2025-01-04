@@ -1,28 +1,16 @@
-# Use Amazon Linux 2 base image with Python 3.8
-FROM public.ecr.aws/lambda/python:3.8
+# Use AWS-provided Lambda base image for Python 3.8
+FROM public.ecr.aws/lambda/python:3.11
 
-# Set working directory in the container
-WORKDIR /var/task
+# Copy the Conda environment configuration file
+COPY environment.yml ${LAMBDA_TASK_ROOT}
 
-# Install Miniconda
-RUN yum -y install wget && \
-    wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
-    bash Miniconda3-latest-Linux-x86_64.sh -b -p /miniconda && \
-    rm Miniconda3-latest-Linux-x86_64.sh
+RUN pip install -r environment.yml
 
-# Add Miniconda to PATH
-ENV PATH="/miniconda/bin:$PATH"
+# Copy application code
+COPY app.py ${LAMBDA_TASK_ROOT}
 
-# Copy Conda environment YAML file and install dependencies
-COPY environment.yml .
-RUN conda env create -f environment.yml && conda clean --all -y
+# Copy the ML model to the /opt/model directory
+COPY movie_hit_predictor.pkl /opt/model/movie_hit_predictor.pkl
 
-# Set the Conda environment as default
-ENV PATH="/miniconda/envs/movie-hit-predictor/bin:$PATH"
-
-# Copy the model and Lambda function code
-COPY movie_hit_predictor.pkl .
-COPY lambda_function.py .
-
-# Command for Lambda to run the handler
+# Command for AWS Lambda runtime
 CMD ["lambda_function.lambda_handler"]
